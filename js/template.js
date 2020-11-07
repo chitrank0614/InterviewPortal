@@ -1,5 +1,5 @@
-// var api_url = '';
-var api_url = 'http://127.0.0.1:8000/';
+var api_url = 'https://practice-interview-portal.herokuapp.com/';
+// var api_url = 'http://127.0.0.1:8000/';
 
 function deleteCookies(cname, cvalue, exdays) {
 	setCookie(cname, cvalue, exdays);

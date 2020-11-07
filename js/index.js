@@ -8,7 +8,6 @@ function initialize() {
 	else if (page == 'interview') getAllInterviews();
 	else getAllInterviews();
 	hideLoader();
-	alert('hello');
 }
 
 function showLoader() {
