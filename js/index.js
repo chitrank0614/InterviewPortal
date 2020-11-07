@@ -5,7 +5,10 @@ function initialize() {
 	let page = currentURL.searchParams.get('page');
 
 	if (page == 'addDetails') switchToDetailsPanel();
-	else if (page == 'interview') getAllInterviews();
+	else if (page == 'updateDetails') {
+		let interview_id = currentURL.searchParams.get('id');
+		editInterview(interview_id);
+	} else if (page == 'interview') getAllInterviews();
 	else getAllInterviews();
 	hideLoader();
 }
