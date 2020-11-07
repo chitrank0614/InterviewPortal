@@ -1,6 +1,7 @@
 var api_url = 'https://practice-interview-portal.herokuapp.com/';
 // var api_url = 'http://127.0.0.1:8000/';
 
+// functions to excess and set cookies data
 function deleteCookies(cname, cvalue, exdays) {
 	setCookie(cname, cvalue, exdays);
 }
@@ -30,6 +31,7 @@ function checkCookie(cname) {
 	}
 }
 
+// axios based functions to make various types of calls to the server.
 function makeAsyncGetRequest(path) {
 	return new Promise(function (resolve, reject) {
 		axios.get(api_url + path).then(
