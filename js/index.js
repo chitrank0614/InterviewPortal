@@ -209,6 +209,8 @@ async function editInterview(interview_id) {
 		interviewData['interviewee_email'];
 	document.getElementById('interviewee_phone_no').value =
 		interviewData['interviewee_phone_no'];
+	document.getElementById('interviewee_resume_link').value =
+		interviewData['interviewee_resume_link'];
 	document.getElementById('schedule_date').value =
 		interviewData['schedule_date'];
 	document.getElementById('start_time').value = interviewData['start_time'];
