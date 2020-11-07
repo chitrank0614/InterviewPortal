@@ -152,7 +152,7 @@ html {
 	text-align: center;
 	padding: 14px 16px;
 	text-decoration: none;
-	font-size: 17px;
+	font-size: 16px;
 	font-family: Varela;
 }
 
@@ -172,6 +172,9 @@ html {
 }
 
 @media screen and (max-width: 700px) {
+	.topnav a {
+		font-size: 14px;
+	}
 	.topnav a:not(:first-child) {
 		display: none;
 	}
