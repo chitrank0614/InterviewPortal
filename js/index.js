@@ -159,7 +159,7 @@ async function addInterview() {
 		}
 	}
 
-	// response = await makeAsyncPostRequest('setInterview', interviewData);
+	response = await makeAsyncPostRequest('setInterview', interviewData);
 	hideLoader();
 	alert(response['result']['Message']);
 }
