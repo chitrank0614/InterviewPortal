@@ -107,7 +107,86 @@ function switchToHome() {
 	getAllInterviews();
 }
 
-function switchToDetailsPanel() {
+async function getAllInterviewers() {
+	let response = await makeAsyncGetRequest('getAllInterviewers');
+	// console.log(response['result']);
+	interviewersData = response['result'];
+	let selectDiv = document.getElementById('interviewers_list');
+	if (interviewersData['Code'] == 1000) {
+		let divText =
+			"<select class='form-control' onchange='autoFillInterviewer(this)'> <option></option>";
+		for (let x in interviewersData['Data']) {
+			divText +=
+				'<option value=' +
+				interviewersData['Data'][x].interviewer_email +
+				'>' +
+				interviewersData['Data'][x].interviewer_email +
+				'</option>';
+		}
+		divText += '</select>';
+		selectDiv.innerHTML = divText;
+	} else {
+		selectDiv.innerHTML = 'No existing interviewers';
+	}
+}
+
+function autoFillInterviewer(selectObject) {
+	let interviewerEmail = selectObject.value;
+
+	for (let x in interviewersData['Data'])
+		if (interviewersData['Data'][x].interviewer_email == interviewerEmail) {
+			document.getElementById('interviewer_first_name').value =
+				interviewersData['Data'][x].interviewer_first_name;
+			document.getElementById('interviewer_last_name').value =
+				interviewersData['Data'][x].interviewer_last_name;
+			document.getElementById('interviewer_email').value =
+				interviewersData['Data'][x].interviewer_email;
+			document.getElementById('interviewer_phone_no').value =
+				interviewersData['Data'][x].interviewer_phone_no;
+		}
+}
+
+async function getAllInterviewees() {
+	let response = await makeAsyncGetRequest('getAllInterviewees');
+	// console.log(response['result']);
+	intervieweesData = response['result'];
+	let selectDiv = document.getElementById('interviewees_list');
+	if (intervieweesData['Code'] == 1000) {
+		let divText =
+			"<select class='form-control' onchange='autoFillInterviewee(this)'> <option></option>";
+		for (let x in intervieweesData['Data']) {
+			divText +=
+				'<option value=' +
+				intervieweesData['Data'][x].interviewee_email +
+				'>' +
+				intervieweesData['Data'][x].interviewee_email +
+				'</option>';
+		}
+		divText += '</select>';
+		selectDiv.innerHTML = divText;
+	} else {
+		selectDiv.innerHTML = 'No existing interviewees';
+	}
+}
+
+function autoFillInterviewee(selectObject) {
+	let intervieweeEmail = selectObject.value;
+	for (let x in intervieweesData['Data'])
+		if (intervieweesData['Data'][x].interviewee_email == intervieweeEmail) {
+			document.getElementById('interviewee_first_name').value =
+				intervieweesData['Data'][x].interviewee_first_name;
+			document.getElementById('interviewee_last_name').value =
+				intervieweesData['Data'][x].interviewee_last_name;
+			document.getElementById('interviewee_email').value =
+				intervieweesData['Data'][x].interviewee_email;
+			document.getElementById('interviewee_phone_no').value =
+				intervieweesData['Data'][x].interviewee_phone_no;
+			document.getElementById('interviewee_resume_link').value =
+				intervieweesData['Data'][x].interviewee_resume_link;
+		}
+}
+
+async function switchToDetailsPanel() {
 	showLoader();
 	let interviewAddTemplate = document.getElementById('InterviewAddTemplate')
 		.innerHTML;
@@ -121,6 +200,8 @@ function switchToDetailsPanel() {
 	);
 
 	document.getElementById('canvas').innerHTML = interviewAddTemplate;
+	await getAllInterviewers();
+	await getAllInterviewees();
 	hideLoader();
 }
 
@@ -160,6 +241,8 @@ async function addInterview() {
 	}
 
 	response = await makeAsyncPostRequest('setInterview', interviewData);
+	getAllInterviewers();
+	getAllInterviewees();
 	hideLoader();
 	alert(response['result']['Message']);
 }
@@ -215,6 +298,10 @@ async function editInterview(interview_id) {
 		interviewData['schedule_date'];
 	document.getElementById('start_time').value = interviewData['start_time'];
 	document.getElementById('end_time').value = interviewData['end_time'];
+
+	await getAllInterviewers();
+	await getAllInterviewees();
+
 	hideLoader();
 }
 

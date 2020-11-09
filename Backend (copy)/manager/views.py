@@ -121,6 +121,18 @@ def removeInterviewee(email):
 
 # Deleting an instance of the schema from the database Interview
 def deleteInterview(request, id):
+    interview_data = Interview.objects.filter(id=id)
+
+    instance = Interview.objects.filter(
+        intervieweeEmail=interview_data[0].intervieweeEmail).exclude(id=id)
+    if not instance:
+        removeInterviewee(interview_data[0].intervieweeEmail)
+
+    instance = Interview.objects.filter(
+        interviewerEmail=interview_data[0].interviewerEmail).exclude(id=id)
+    if not instance:
+        removeInterviewer(interview_data[0].interviewerEmail)
+
     Interview.objects.filter(id=id).delete()
     return JsonResponse({'result': {'Code': 1000, 'Message': 'Interview Deleted', "Data": None}})
 
