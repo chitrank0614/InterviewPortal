@@ -40,3 +40,26 @@ class Interviewees(models.Model):
 
     def __str__(self):
         return "{%s , %s , %s , %s , %s}" % (self.firstName, self.lastName, self.email, self.phoneNo, self.resumeLink)
+
+
+class Test(models.Model):
+    resume = models.FileField(upload_to='documents/%Y/%m/%d')
+
+    def __str__(self):
+        return "{%s}" % self.resume
+
+
+class Test2(models.Model):
+    rid = models.CharField(max_length=200)
+    resume = models.FileField(upload_to='documents/%Y/%m/%d')
+
+    def __str__(self):
+        return "{%s %s}" % (self.rid, self.resume)
+
+
+class Resumes(models.Model):
+    intervieweeEmail = models.CharField(max_length=200)
+    intervieweeResume = models.FileField(upload_to='documents/%Y/%m/%d')
+
+    def __str__(self):
+        return "{%s %s}" % (self.intervieweeEmail, self.intervieweeResume.path)

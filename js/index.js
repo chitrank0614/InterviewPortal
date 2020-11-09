@@ -84,6 +84,10 @@ async function getAllInterviews() {
 			interviewData[i]['end_time']
 		);
 		modifiedHTML = modifiedHTML.replace(
+			'{{intervieweeResumeLink}}',
+			interviewData[i]['interviewee_resume_link']
+		);
+		modifiedHTML = modifiedHTML.replace(
 			'{{interviewID}}',
 			interviewData[i]['interview_id']
 		);
@@ -181,8 +185,14 @@ function autoFillInterviewee(selectObject) {
 				intervieweesData['Data'][x].interviewee_email;
 			document.getElementById('interviewee_phone_no').value =
 				intervieweesData['Data'][x].interviewee_phone_no;
-			document.getElementById('interviewee_resume_link').value =
-				intervieweesData['Data'][x].interviewee_resume_link;
+			let fileName = intervieweesData['Data'][x].interviewee_resume_link;
+			fileName = fileName.split('/');
+			fileName = fileName[fileName.length - 1];
+			document.getElementById('interviewee_resume_link').innerHTML =
+				fileName +
+				'<a href="' +
+				intervieweesData['Data'][x].interviewee_resume_link +
+				'"> &nbsp&nbsp Link</a>';
 		}
 }
 
@@ -208,39 +218,77 @@ async function switchToDetailsPanel() {
 // Collecting data from the form and sending a POST request to insert it into the database.
 async function addInterview() {
 	showLoader();
-	let interviewData = {
-		interviewer_email: document.getElementById('interviewer_email').value,
-		interviewer_first_name: document.getElementById('interviewer_first_name')
-			.value,
-		interviewer_last_name: document.getElementById('interviewer_last_name')
-			.value,
-		interviewer_phone_no: document.getElementById('interviewer_phone_no').value,
-		interviewee_email: document.getElementById('interviewee_email').value,
-		interviewee_first_name: document.getElementById('interviewee_first_name')
-			.value,
-		interviewee_last_name: document.getElementById('interviewee_last_name')
-			.value,
-		interviewee_phone_no: document.getElementById('interviewee_phone_no').value,
-		interviewee_resume_link: document.getElementById('interviewee_resume_link')
-			.value,
-		schedule_date: String(document.getElementById('schedule_date').value),
-		start_time: String(document.getElementById('start_time').value + ':00'),
-		end_time: String(document.getElementById('end_time').value + ':00'),
-	};
+
+	const form = new FormData();
+	form.append(
+		'interviewer_email',
+		document.getElementById('interviewer_email').value
+	);
+	form.append(
+		'interviewer_first_name',
+		document.getElementById('interviewer_first_name').value
+	);
+	form.append(
+		'interviewer_last_name',
+		document.getElementById('interviewer_last_name').value
+	);
+	form.append(
+		'interviewer_phone_no',
+		document.getElementById('interviewer_phone_no').value
+	);
+	form.append(
+		'interviewee_email',
+		document.getElementById('interviewee_email').value
+	);
+	form.append(
+		'interviewee_first_name',
+		document.getElementById('interviewee_first_name').value
+	);
+	form.append(
+		'interviewee_last_name',
+		document.getElementById('interviewee_last_name').value
+	);
+	form.append(
+		'interviewee_phone_no',
+		document.getElementById('interviewee_phone_no').value
+	);
+
+	var file = document.getElementById('interviewee_resume').files[0];
+	if (file) {
+		var reader = new FileReader();
+		reader.onload = function () {
+			blob = window.dataURLtoBlob(reader.result);
+		};
+		reader.readAsDataURL(file);
+		fileName = document.getElementById('interviewee_resume').value.split('\\');
+		fileName = fileName[fileName.length - 1];
+
+		form.append('interviewee_resume', file, fileName);
+	} else form.append('interviewee_resume', '');
+	form.append(
+		'schedule_date',
+		String(document.getElementById('schedule_date').value)
+	);
+	form.append(
+		'start_time',
+		String(document.getElementById('start_time').value + ':00')
+	);
+	form.append(
+		'end_time',
+		String(document.getElementById('end_time').value + ':00')
+	);
 
 	// checking for data not to be null or undefined or empty
-	for (let key in interviewData) {
-		if (interviewData.hasOwnProperty(key)) {
-			value = interviewData[key];
-			if (!value) {
-				hideLoader();
-				alert('Some fields are either empty or have invalid values.');
-				return;
-			}
+	for (var pair of form.entries()) {
+		if (pair[0] != 'interviewee_resume' && !pair[1]) {
+			hideLoader();
+			alert('Some fields are either empty or have invalid values.');
+			return;
 		}
+		console.log(pair[0] + ', ' + pair[1]);
 	}
 
-	response = await makeAsyncPostRequest('setInterview', interviewData);
+	response = await makeAsyncPostMultiPartRequest('setInterview', form);
 	getAllInterviewers();
 	getAllInterviewees();
 	hideLoader();
@@ -292,8 +340,14 @@ async function editInterview(interview_id) {
 		interviewData['interviewee_email'];
 	document.getElementById('interviewee_phone_no').value =
 		interviewData['interviewee_phone_no'];
-	document.getElementById('interviewee_resume_link').value =
-		interviewData['interviewee_resume_link'];
+	let fileName = interviewData['interviewee_resume_link'];
+	fileName = fileName.split('/');
+	fileName = fileName[fileName.length - 1];
+	document.getElementById('interviewee_resume_link').innerHTML =
+		fileName +
+		'<a href="' +
+		interviewData['interviewee_resume_link'] +
+		'"> &nbsp&nbsp Link</a>';
 	document.getElementById('schedule_date').value =
 		interviewData['schedule_date'];
 	document.getElementById('start_time').value = interviewData['start_time'];
@@ -311,47 +365,119 @@ async function updateInterview(interview_id) {
 	let response = await makeAsyncGetRequest(
 		'getCompleteInterviewDetails/' + interview_id
 	);
-	interviewData = {
-		interview_id: interview_id,
-		old_data: response['result']['Data'],
-		new_data: {
-			interviewer_email: document.getElementById('interviewer_email').value,
-			interviewer_first_name: document.getElementById('interviewer_first_name')
-				.value,
-			interviewer_last_name: document.getElementById('interviewer_last_name')
-				.value,
-			interviewer_phone_no: document.getElementById('interviewer_phone_no')
-				.value,
-			interviewee_email: document.getElementById('interviewee_email').value,
-			interviewee_first_name: document.getElementById('interviewee_first_name')
-				.value,
-			interviewee_last_name: document.getElementById('interviewee_last_name')
-				.value,
-			interviewee_phone_no: document.getElementById('interviewee_phone_no')
-				.value,
-			interviewee_resume_link: document.getElementById(
-				'interviewee_resume_link'
-			).value,
-			schedule_date: String(document.getElementById('schedule_date').value),
-			start_time: String(document.getElementById('start_time').value),
-			end_time: String(document.getElementById('end_time').value),
-		},
-	};
 
-	// check for data not to be null or empty or undefined.
-	for (let key in interviewData['new_data']) {
-		if (interviewData['new_data'].hasOwnProperty(key)) {
-			value = interviewData['new_data'][key];
-			if (!value) {
-				hideLoader();
-				alert('Some fields are either empty or have invalid values.');
-				return;
-			}
-			// console.log(key, value);
+	const form = new FormData();
+	form.append('interview_id', interview_id);
+	form.append(
+		'new_interviewer_email',
+		document.getElementById('interviewer_email').value
+	);
+	form.append(
+		'new_interviewer_first_name',
+		document.getElementById('interviewer_first_name').value
+	);
+	form.append(
+		'new_interviewer_last_name',
+		document.getElementById('interviewer_last_name').value
+	);
+	form.append(
+		'new_interviewer_phone_no',
+		document.getElementById('interviewer_phone_no').value
+	);
+	form.append(
+		'new_interviewee_email',
+		document.getElementById('interviewee_email').value
+	);
+	form.append(
+		'new_interviewee_first_name',
+		document.getElementById('interviewee_first_name').value
+	);
+	form.append(
+		'new_interviewee_last_name',
+		document.getElementById('interviewee_last_name').value
+	);
+	form.append(
+		'new_interviewee_phone_no',
+		document.getElementById('interviewee_phone_no').value
+	);
+
+	var file = document.getElementById('interviewee_resume').files[0];
+	if (file) {
+		var reader = new FileReader();
+		reader.onload = function () {
+			blob = window.dataURLtoBlob(reader.result);
+		};
+		reader.readAsDataURL(file);
+		fileName = document.getElementById('interviewee_resume').value.split('\\');
+		fileName = fileName[fileName.length - 1];
+		form.append('interviewee_resume', file, fileName);
+	} else form.append('interviewee_resume', '');
+
+	form.append(
+		'new_schedule_date',
+		String(document.getElementById('schedule_date').value)
+	);
+	form.append(
+		'new_start_time',
+		String(document.getElementById('start_time').value)
+	);
+	form.append(
+		'new_end_time',
+		String(document.getElementById('end_time').value)
+	);
+	form.append(
+		'old_interviewer_email',
+		response['result']['Data']['interviewer_email']
+	);
+	form.append(
+		'old_interviewer_first_name',
+		response['result']['Data']['interviewer_first_name']
+	);
+	form.append(
+		'old_interviewer_last_name',
+		response['result']['Data']['interviewer_last_name']
+	);
+	form.append(
+		'old_interviewer_phone_no',
+		response['result']['Data']['interviewer_phone_no']
+	);
+	form.append(
+		'old_interviewee_email',
+		response['result']['Data']['interviewee_email']
+	);
+	form.append(
+		'old_interviewee_first_name',
+		response['result']['Data']['interviewee_first_name']
+	);
+	form.append(
+		'old_interviewee_last_name',
+		response['result']['Data']['interviewee_last_name']
+	);
+	form.append(
+		'old_interviewee_phone_no',
+		response['result']['Data']['interviewee_phone_no']
+	);
+
+	form.append(
+		'old_interviewee_resume_link',
+		response['result']['Data']['interviewee_resume_link']
+	);
+	form.append('old_schedule_date', response['result']['Data']['schedule_date']);
+	form.append('old_start_time', response['result']['Data']['start_time']);
+	form.append('old_end_time', response['result']['Data']['end_time']);
+
+	// checking for data not to be null or undefined or empty
+	for (var pair of form.entries()) {
+		if (pair[0] != 'interviewee_resume' && !pair[1]) {
+			hideLoader();
+			alert('Some fields are either empty or have invalid values.');
+			return;
 		}
+		console.log(pair[0] + ', ' + pair[1]);
 	}
+
 	// console.log(interviewData);
-	response = await makeAsyncPostRequest('updateInterview', interviewData);
+	response = await makeAsyncPostMultiPartRequest('updateInterview', form);
 	// console.log(response);
 	hideLoader();
 	alert(response['result']['Message']);
@@ -365,3 +491,49 @@ async function deleteInterview(interview_id) {
 	alert(response['result']['Message']);
 	getAllInterviews();
 }
+
+// function post(path, params, method = 'post') {
+// 	const form = document.createElement('form');
+// 	form.method = method;
+// 	form.action = path;
+
+// 	for (const key in params) {
+// 		if (params.hasOwnProperty(key)) {
+// 			const hiddenField = document.createElement('input');
+// 			hiddenField.type = 'hidden';
+// 			hiddenField.name = key;
+// 			hiddenField.value = params[key];
+// 			form.appendChild(hiddenField);
+// 		}
+// 	}
+
+// 	document.body.appendChild(form);
+// 	form.submit();
+// }
+
+// function convertPDFtoBlob(inputId) {
+// 	var file = document.getElementById(inputId).files[0];
+// 	var reader = new FileReader();
+// 	reader.onload = function () {
+// 		// console.log(reader.result);
+// 		blob = window.dataURLtoBlob(reader.result);
+// 		// console.log(
+// 		// 	blob,
+// 		// 	new File([blob], 'resume.pdf', {
+// 		// 		type: 'application/pdf',
+// 		// 	})
+// 		// );
+// 	};
+// 	reader.readAsDataURL(file);
+// 	return file;
+// }
+
+// async function test() {
+// 	id = 2;
+// 	let fileBlob = convertPDFtoBlob('testFile');
+// 	const form = new FormData();
+// 	form.append('docfile', fileBlob, 'resume222.pdf');
+// 	form.append('rid', id);
+// 	response = await makeAsyncPostMultiPartRequest('test', form);
+// 	console.log(response);
+// }

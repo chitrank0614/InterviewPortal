@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.http import JsonResponse
-from manager.models import Interview, Interviewees, Interviewers
+from manager.models import Interview, Interviewees, Interviewers, Test2, Resumes
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime
 from string import Template
@@ -35,7 +35,7 @@ def sendEmail(to, subject, body):
 
 
 # Email utility function
-def sendEmailUtil(to, schedule_date, start_time, end_time):
+def sendEmailUtil(to, schedule_date, start_time, end_time, resume_link):
 
     subject = "Interview With IB Academy."
     body = """
@@ -45,12 +45,13 @@ You have an interview scheduled with InterviewBit Academy. The details for the p
 Date: %s
 Start Time: %s
 End Time: %s
+Resume Link: %s
 
 Meeting details will be shared later.
 
 All the best.
 IB Academy.
-    """ % (schedule_date.date(), start_time, end_time)
+    """ % (schedule_date.date(), start_time, end_time, resume_link)
 
     sendEmail(to, subject, body)
     output = 'Sent'
@@ -116,7 +117,19 @@ def addInterviewee(first_name, last_name, email, phone_no, resume_link):
 
 # Removing an instance of the schema from the database Interview
 def removeInterviewee(email):
+    removeResume(email)
     Interviewees.objects.filter(email=email).delete()
+
+
+def addResume(interviewee_email, interviewee_resume):
+    instance = Resumes(intervieweeEmail=interviewee_email,
+                       intervieweeResume=interviewee_resume)
+    instance.save()
+    return instance.intervieweeResume.path
+
+
+def removeResume(interviewee_email):
+    Resumes.objects.filter(intervieweeEmail=interviewee_email).delete()
 
 
 # Deleting an instance of the schema from the database Interview
@@ -141,12 +154,17 @@ def deleteInterview(request, id):
 @csrf_exempt
 def setInterview(request):
     if(request.method == "POST"):
-        json_data = json.loads(str(request.body, encoding='utf-8'))
-        interviewee_email = json_data['interviewee_email']
-        interviewer_email = json_data['interviewer_email']
-        schedule_date = getIntoDateFormat(json_data['schedule_date'])
-        start_time = getIntoTimeFormat(json_data['start_time'])
-        end_time = getIntoTimeFormat(json_data['end_time'])
+        if 'interviewee_resume' in request.FILES:
+            interviewee_resume = request.FILES['interviewee_resume']
+            request.FILES['resume'] = None
+        else:
+            interviewee_resume = None
+
+        interviewee_email = request.POST['interviewee_email']
+        interviewer_email = request.POST['interviewer_email']
+        schedule_date = getIntoDateFormat(request.POST['schedule_date'])
+        start_time = getIntoTimeFormat(request.POST['start_time'])
+        end_time = getIntoTimeFormat(request.POST['end_time'])
 
         # Some possible errors
         if(interviewee_email == interviewer_email):
@@ -189,18 +207,20 @@ def setInterview(request):
 
         # Creating an instance of the interviewee if it doesn't exists in the database.
         if not interviewee_exists:
-            interviewee_first_name = json_data['interviewee_first_name']
-            interviewee_last_name = json_data['interviewee_last_name']
-            interviewee_phone_no = json_data['interviewee_phone_no']
-            interviewee_resume_link = json_data['interviewee_resume_link']
+            interviewee_first_name = request.POST['interviewee_first_name']
+            interviewee_last_name = request.POST['interviewee_last_name']
+            interviewee_phone_no = request.POST['interviewee_phone_no']
+            interviewee_resume_link = addResume(
+                request.POST['interviewee_email'], interviewee_resume)
             addInterviewee(interviewee_first_name, interviewee_last_name,
                            interviewee_email, interviewee_phone_no, interviewee_resume_link)
 
         # Creating an instance of the interviewer if it doesn't exists in the database.
         if not interviewer_exists:
-            interviewer_first_name = json_data['interviewer_first_name']
-            interviewer_last_name = json_data['interviewer_last_name']
-            interviewer_phone_no = json_data['interviewer_phone_no']
+            interviewer_first_name = request.POST['interviewer_first_name']
+            interviewer_last_name = request.POST['interviewer_last_name']
+            interviewer_phone_no = request.POST['interviewer_phone_no']
+
             addInterviewer(interviewer_first_name, interviewer_last_name,
                            interviewer_email, interviewer_phone_no)
 
@@ -209,8 +229,10 @@ def setInterview(request):
                      schedule_date, start_time, end_time)
 
         # Sending an interview after scheduling an interview.
-        sendEmailUtil(interviewee_email, schedule_date, start_time, end_time)
-        sendEmailUtil(interviewer_email, schedule_date, start_time, end_time)
+        sendEmailUtil(interviewee_email, schedule_date, start_time, end_time,
+                      Interviewees.objects.get(email=interviewee_email).resumeLink)
+        sendEmailUtil(interviewer_email, schedule_date, start_time, end_time,
+                      Interviewees.objects.get(email=interviewee_email).resumeLink)
         return JsonResponse({'result': {'Code': 1000, 'Message': 'Interview Added', "Data": None}})
     return JsonResponse({'result': {'Code': 1004, 'Message': 'Wrong Method', "Data": None}})
 
@@ -224,11 +246,14 @@ def getAllInterviews(request):
             row = {}
             row['interview_id'] = i.id
             row['interviewee_email'] = i.intervieweeEmail
+            row['interviewee_resume_link'] = Interviewees.objects.get(
+                pk=i.intervieweeEmail).resumeLink
             row['interviewer_email'] = i.interviewerEmail
             row['schedule_date'] = i.scheduleDate
             row['start_time'] = i.startTime
             row['end_time'] = i.endTime
             data_rows.append(row)
+
         return JsonResponse({'result': {'Code': 1000, "Message": "Interviews Found", "Data": data_rows}})
     return JsonResponse({'result': {'Code': 1004, "Message": "Interviews Not Found", "Data": None}})
 
@@ -300,10 +325,41 @@ def getCompleteInterviewDetails(request, id):
 @csrf_exempt
 def updateInterview(request):
     if(request.method == "POST"):
-        json_data = json.loads(str(request.body, encoding='utf-8'))
-        interview_id = json_data['interview_id']
-        old_data = json_data['old_data']
-        new_data = json_data['new_data']
+        if 'interviewee_resume' in request.FILES:
+            interviewee_resume = request.FILES['interviewee_resume']
+            request.FILES['resume'] = None
+        else:
+            interviewee_resume = None
+
+        interview_id = request.POST['interview_id']
+        old_data = {'schedule_date': request.POST['old_schedule_date'],
+                    'start_time': request.POST['old_start_time'],
+                    'end_time': request.POST['old_end_time'],
+                    'interviewer_email': request.POST['old_interviewer_email'],
+                    'interviewer_first_name': request.POST['old_interviewer_first_name'],
+                    'interviewer_last_name': request.POST['old_interviewer_last_name'],
+                    'interviewer_phone_no': request.POST['old_interviewer_phone_no'],
+                    'interviewee_email': request.POST['old_interviewee_email'],
+                    'interviewee_first_name': request.POST['old_interviewee_first_name'],
+                    'interviewee_last_name': request.POST['old_interviewee_last_name'],
+                    'interviewee_phone_no': request.POST['old_interviewee_phone_no'],
+                    'interviewee_resume_link': request.POST['old_interviewee_resume_link'],
+                    }
+
+        new_data = {'schedule_date': request.POST['new_schedule_date'],
+                    'start_time': request.POST['new_start_time'],
+                    'end_time': request.POST['new_end_time'],
+                    'interviewer_email': request.POST['new_interviewer_email'],
+                    'interviewer_first_name': request.POST['new_interviewer_first_name'],
+                    'interviewer_last_name': request.POST['new_interviewer_last_name'],
+                    'interviewer_phone_no': request.POST['new_interviewer_phone_no'],
+                    'interviewee_email': request.POST['new_interviewee_email'],
+                    'interviewee_first_name': request.POST['new_interviewee_first_name'],
+                    'interviewee_last_name': request.POST['new_interviewee_last_name'],
+                    'interviewee_phone_no': request.POST['new_interviewee_phone_no'],
+                    'interviewee_resume_link': "",
+                    }
+        print(new_data, old_data)
 
         # Formating the date and time data.
         old_data['schedule_date'] = getIntoDateFormat(
@@ -357,9 +413,15 @@ def updateInterview(request):
 
         # Remove Interviewee if they no longer have any interview scheduled.
         if(old_data['interviewee_email'] == new_data['interviewee_email']):
+            if interviewee_resume:
+                removeResume(new_data['interviewee_email'])
+                new_data['interviewee_resume_link'] = addResume(
+                    new_data['interviewee_email'], interviewee_resume)
             Interviewees.objects.filter(pk=old_data['interviewee_email']).update(
                 firstName=new_data['interviewee_first_name'], lastName=new_data['interviewee_last_name'], phoneNo=new_data['interviewee_phone_no'], resumeLink=new_data['interviewee_resume_link'])
         else:
+            new_data['interviewee_resume_link'] = addResume(
+                new_data['interviewee_email'], interviewee_resume)
             addInterviewee(new_data['interviewee_first_name'], new_data['interviewee_last_name'],
                            new_data['interviewee_email'], new_data['interviewee_phone_no'], new_data['interviewee_resume_link'])
 
@@ -381,17 +443,17 @@ def updateInterview(request):
             if not instance:
                 removeInterviewer(old_data['interviewer_email'])
 
-        removeInterview(interview_id)
+        # Updating the instance of interview into the database.
 
-        # Adding a new instance of interview into the database.
-        addInterview(new_data['interviewer_email'], new_data['interviewee_email'],
-                     new_data['schedule_date'], new_data['start_time'], new_data['end_time'])
+        Interview.objects.filter(pk=interview_id).update(
+            interviewerEmail=new_data['interviewer_email'], intervieweeEmail=new_data['interviewee_email'],
+            scheduleDate=new_data['schedule_date'], startTime=new_data['start_time'], endTime=new_data['end_time'])
 
         # Sending an email with the new details for the interview.
         sendEmailUtil(new_data['interviewee_email'], new_data['schedule_date'],
-                      new_data['start_time'], new_data['end_time'])
+                      new_data['start_time'], new_data['end_time'], Interviewees.objects.get(pk=new_data['interviewee_email']).resumeLink)
         sendEmailUtil(new_data['interviewer_email'], new_data['schedule_date'],
-                      new_data['start_time'], new_data['end_time'])
+                      new_data['start_time'], new_data['end_time'], Interviewees.objects.get(pk=new_data['interviewee_email']).resumeLink)
 
         return JsonResponse({'result': {'Code': 1000, 'Message': 'Interview Updated', "Data": None}})
     return JsonResponse({'result': {'Code': 1004, 'Message': 'Wrong Method', "Data": None}})
@@ -403,13 +465,19 @@ def home(request):
 
 
 def test2(request):
-    json_data = json.loads(str(request.body, encoding='utf-8'))
-    print(json_data['data'])
+    rid = request.POST['rid']
+    print(rid)
+    docfile = request.FILES['docfile']
+    if docfile:
+        print("yes")
+        instance = Test2(rid=rid, resume=docfile)
+        instance.save()
+    return JsonResponse({'result': {'Code': 1003, 'Message': instance.resume.path, "Data": None}})
 
 
 @csrf_exempt
 def test(request):
-    test2(request)
+    return test2(request)
 
 
 def jsonData(request):

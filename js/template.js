@@ -94,3 +94,22 @@ function topNavToggle() {
 		x.className = 'topnav';
 	}
 }
+
+function makeAsyncPostMultiPartRequest(path, queryObject) {
+	return new Promise(function (resolve, reject) {
+		axios
+			.post(api_url + path, queryObject, {
+				headers: { 'Content-Type': 'multipart/form-data' },
+			})
+			.then(
+				(response) => {
+					var returnObj = response.data;
+					console.log('Async Post Request');
+					resolve(returnObj);
+				},
+				(error) => {
+					reject(error);
+				}
+			);
+	});
+}
