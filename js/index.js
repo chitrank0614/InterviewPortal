@@ -285,7 +285,7 @@ async function addInterview() {
 			alert('Some fields are either empty or have invalid values.');
 			return;
 		}
-		console.log(pair[0] + ', ' + pair[1]);
+		// console.log(pair[0] + ', ' + pair[1]);
 	}
 
 	response = await makeAsyncPostMultiPartRequest('setInterview', form);
@@ -473,7 +473,7 @@ async function updateInterview(interview_id) {
 			alert('Some fields are either empty or have invalid values.');
 			return;
 		}
-		console.log(pair[0] + ', ' + pair[1]);
+		// console.log(pair[0] + ', ' + pair[1]);
 	}
 
 	// console.log(interviewData);
